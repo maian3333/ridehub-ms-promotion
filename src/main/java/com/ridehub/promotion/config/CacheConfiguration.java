@@ -12,61 +12,76 @@ import org.redisson.config.Config;
 import org.redisson.config.SingleServerConfig;
 import org.redisson.jcache.configuration.RedissonConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.cache.JCacheManagerCustomizer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernatePropertiesCustomizer;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.boot.info.GitProperties;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.*;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+
+import com.ridehub.common.config.ConsulSSHTunnel;
+import com.ridehub.common.config.ConsulSSHTunnelAutoConfiguration;
+
 import tech.jhipster.config.JHipsterProperties;
 import tech.jhipster.config.cache.PrefixedKeyGenerator;
 
 @Configuration
 @EnableCaching
+@AutoConfigureAfter(ConsulSSHTunnelAutoConfiguration.class)
+@ConditionalOnBean(ConsulSSHTunnel.class) // Only create if tunnel bean exists
+@DependsOn("consulSSHTunnel") // Explicitly depend on the tunnel bean
 public class CacheConfiguration {
 
     private GitProperties gitProperties;
     private BuildProperties buildProperties;
 
     @Bean
-    public javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration(JHipsterProperties jHipsterProperties) {
+    public javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration(
+            JHipsterProperties jHipsterProperties) {
         MutableConfiguration<Object, Object> jcacheConfig = new MutableConfiguration<>();
 
         URI redisUri = URI.create(jHipsterProperties.getCache().getRedis().getServer()[0]);
 
         Config config = new Config();
-        // Fix Hibernate lazy initialization https://github.com/jhipster/generator-jhipster/issues/22889
+        // Fix Hibernate lazy initialization
+        // https://github.com/jhipster/generator-jhipster/issues/22889
         config.setCodec(new org.redisson.codec.SerializationCodec());
         if (jHipsterProperties.getCache().getRedis().isCluster()) {
             ClusterServersConfig clusterServersConfig = config
-                .useClusterServers()
-                .setMasterConnectionPoolSize(jHipsterProperties.getCache().getRedis().getConnectionPoolSize())
-                .setMasterConnectionMinimumIdleSize(jHipsterProperties.getCache().getRedis().getConnectionMinimumIdleSize())
-                .setSubscriptionConnectionPoolSize(jHipsterProperties.getCache().getRedis().getSubscriptionConnectionPoolSize())
-                .addNodeAddress(jHipsterProperties.getCache().getRedis().getServer());
+                    .useClusterServers()
+                    .setMasterConnectionPoolSize(jHipsterProperties.getCache().getRedis().getConnectionPoolSize())
+                    .setMasterConnectionMinimumIdleSize(
+                            jHipsterProperties.getCache().getRedis().getConnectionMinimumIdleSize())
+                    .setSubscriptionConnectionPoolSize(
+                            jHipsterProperties.getCache().getRedis().getSubscriptionConnectionPoolSize())
+                    .addNodeAddress(jHipsterProperties.getCache().getRedis().getServer());
 
             if (redisUri.getUserInfo() != null) {
-                clusterServersConfig.setPassword(redisUri.getUserInfo().substring(redisUri.getUserInfo().indexOf(':') + 1));
+                clusterServersConfig
+                        .setPassword(redisUri.getUserInfo().substring(redisUri.getUserInfo().indexOf(':') + 1));
             }
         } else {
             SingleServerConfig singleServerConfig = config
-                .useSingleServer()
-                .setConnectionPoolSize(jHipsterProperties.getCache().getRedis().getConnectionPoolSize())
-                .setConnectionMinimumIdleSize(jHipsterProperties.getCache().getRedis().getConnectionMinimumIdleSize())
-                .setSubscriptionConnectionPoolSize(jHipsterProperties.getCache().getRedis().getSubscriptionConnectionPoolSize())
-                .setAddress(jHipsterProperties.getCache().getRedis().getServer()[0]);
+                    .useSingleServer()
+                    .setConnectionPoolSize(jHipsterProperties.getCache().getRedis().getConnectionPoolSize())
+                    .setConnectionMinimumIdleSize(
+                            jHipsterProperties.getCache().getRedis().getConnectionMinimumIdleSize())
+                    .setSubscriptionConnectionPoolSize(
+                            jHipsterProperties.getCache().getRedis().getSubscriptionConnectionPoolSize())
+                    .setAddress(jHipsterProperties.getCache().getRedis().getServer()[0]);
 
             if (redisUri.getUserInfo() != null) {
-                singleServerConfig.setPassword(redisUri.getUserInfo().substring(redisUri.getUserInfo().indexOf(':') + 1));
+                singleServerConfig
+                        .setPassword(redisUri.getUserInfo().substring(redisUri.getUserInfo().indexOf(':') + 1));
             }
         }
         jcacheConfig.setStatisticsEnabled(true);
         jcacheConfig.setExpiryPolicyFactory(
-            CreatedExpiryPolicy.factoryOf(new Duration(TimeUnit.SECONDS, jHipsterProperties.getCache().getRedis().getExpiration()))
-        );
+                CreatedExpiryPolicy.factoryOf(
+                        new Duration(TimeUnit.SECONDS, jHipsterProperties.getCache().getRedis().getExpiration())));
         return RedissonConfiguration.fromInstance(Redisson.create(config), jcacheConfig);
     }
 
@@ -76,23 +91,31 @@ public class CacheConfiguration {
     }
 
     @Bean
-    public JCacheManagerCustomizer cacheManagerCustomizer(javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration) {
+    public JCacheManagerCustomizer cacheManagerCustomizer(
+            javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration) {
         return cm -> {
             createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName(), jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".files", jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".buyNGetMS", jcacheConfiguration);
-            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".percentOffs", jcacheConfiguration);
-            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".conditionsRS", jcacheConfiguration);
-            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".conditionsDS", jcacheConfiguration);
-            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".conditionsLocs", jcacheConfiguration);
+            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".percentOffs",
+                    jcacheConfiguration);
+            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".conditionsRS",
+                    jcacheConfiguration);
+            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".conditionsDS",
+                    jcacheConfiguration);
+            createCache(cm, com.ridehub.promotion.domain.Promotion.class.getName() + ".conditionsLocs",
+                    jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.BuyNGetMFree.class.getName(), jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.PercentOffTotal.class.getName(), jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.ConditionByRoute.class.getName(), jcacheConfiguration);
-            createCache(cm, com.ridehub.promotion.domain.ConditionByRoute.class.getName() + ".items", jcacheConfiguration);
+            createCache(cm, com.ridehub.promotion.domain.ConditionByRoute.class.getName() + ".items",
+                    jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.ConditionByDate.class.getName(), jcacheConfiguration);
-            createCache(cm, com.ridehub.promotion.domain.ConditionByDate.class.getName() + ".items", jcacheConfiguration);
+            createCache(cm, com.ridehub.promotion.domain.ConditionByDate.class.getName() + ".items",
+                    jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.ConditionByLocation.class.getName(), jcacheConfiguration);
-            createCache(cm, com.ridehub.promotion.domain.ConditionByLocation.class.getName() + ".items", jcacheConfiguration);
+            createCache(cm, com.ridehub.promotion.domain.ConditionByLocation.class.getName() + ".items",
+                    jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.ConditionRouteItem.class.getName(), jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.ConditionDateItem.class.getName(), jcacheConfiguration);
             createCache(cm, com.ridehub.promotion.domain.ConditionLocationItem.class.getName(), jcacheConfiguration);
@@ -102,10 +125,9 @@ public class CacheConfiguration {
     }
 
     private void createCache(
-        javax.cache.CacheManager cm,
-        String cacheName,
-        javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration
-    ) {
+            javax.cache.CacheManager cm,
+            String cacheName,
+            javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration) {
         javax.cache.Cache<Object, Object> cache = cm.getCache(cacheName);
         if (cache != null) {
             cache.clear();

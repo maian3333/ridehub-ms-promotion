@@ -2,7 +2,7 @@ package com.ridehub.promotion.web.rest;
 
 import com.ridehub.promotion.broker.KafkaProducer;
 import com.ridehub.promotion.service.dto.PromotionDTO;
-import com.ridehub.kafka.service.KafkaUtilityService;
+import com.ridehub.common.kafka.service.KafkaUtilityService;
 
 import java.util.HashMap;
 import java.util.Map;

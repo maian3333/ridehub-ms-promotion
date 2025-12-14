@@ -20,13 +20,16 @@ server:
   sql-port: ${SQL_PORT:3310}
   sql-name: ${SQL_NAME:promotion}
 
-
 # Consul SSH Tunnel configuration for ms_promotion
 tunnel:
   service-id: mspromotion
   service-name: mspromotion
 
 spring:
+  jpa:
+    properties:
+      hibernate.cache.use_second_level_cache: false
+      hibernate.cache.use_query_cache: false
   # ===================================================================
   # DEV profile - fixed and tidied
   # ===================================================================
